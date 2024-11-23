@@ -2,15 +2,38 @@ from langchain.llms import LlamaCpp
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain.llms import GPT4All
+from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.vectorstores import Chroma
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 import os.path
 import json
 from datetime import datetime
 
-# Initialize the LLMs
+# Initialize the LLMs and vector store components
 llama = None
 gpt4all = None
 llama_chain = None
 gpt4all_chain = None
+embeddings = None
+vector_store = None
+
+# Initialize embeddings
+try:
+    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+except Exception as e:
+    print(f"Error loading embeddings model: {str(e)}")
+
+# Initialize vector store
+if not os.path.exists("vectorstore"):
+    os.makedirs("vectorstore")
+
+try:
+    vector_store = Chroma(
+        persist_directory="vectorstore",
+        embedding_function=embeddings
+    )
+except Exception as e:
+    print(f"Error initializing vector store: {str(e)}")
 
 try:
     if not os.path.exists("models/llama3_1"):
@@ -55,6 +78,8 @@ Topic: {topic}
 Response:"""
 )
 
+# TODO: Add RAG-specific prompt template that includes context from retrieved documents
+
 # Create the chains if models loaded successfully
 if llama is not None:
     llama_chain = LLMChain(llm=llama, prompt=prompt)
@@ -90,6 +115,9 @@ while True:
 
     # Get user input for topic
     topic = input("Enter a topic to learn about: ")
+
+    # TODO: Add document retrieval from vector store based on topic
+    # TODO: Add context from retrieved documents to prompt
 
     # Run selected model
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
