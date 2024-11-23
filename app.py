@@ -61,6 +61,17 @@ while True:
         print("Goodbye!")
         break
 
+    # Get temperature input
+    while True:
+        try:
+            temperature = float(input("Enter temperature (0.0 to 1.0): "))
+            if 0.0 <= temperature <= 1.0:
+                break
+            else:
+                print("Temperature must be between 0.0 and 1.0")
+        except ValueError:
+            print("Please enter a valid number")
+
     # Get user input for topic
     topic = input("Enter a topic to learn about: ")
 
@@ -68,6 +79,7 @@ while True:
     if model_choice == "1":
         if llama_chain is not None:
             try:
+                llama.temperature = temperature  # Update temperature
                 response = llama_chain.run(topic)
                 print("\nLlama response:")
                 print(response)
@@ -78,6 +90,7 @@ while True:
     elif model_choice == "2":
         if gpt4all_chain is not None:
             try:
+                gpt4all.temperature = temperature  # Update temperature
                 response = gpt4all_chain.run(topic)
                 print("\nGPT4All response:")
                 print(response)
