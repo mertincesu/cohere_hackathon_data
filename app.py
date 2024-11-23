@@ -29,11 +29,23 @@ prompt = PromptTemplate(
 llama_chain = LLMChain(llm=llama, prompt=prompt)
 gpt4all_chain = LLMChain(llm=gpt4all, prompt=prompt)
 
-# Run both chains
-llama_response = llama_chain.run("artificial intelligence")
-gpt4all_response = gpt4all_chain.run("artificial intelligence")
+# Get user input for model selection
+print("Select a model:")
+print("1. Llama")
+print("2. GPT4All")
+model_choice = input("Enter 1 or 2: ")
 
-print("Llama response:")
-print(llama_response)
-print("\nGPT4All response:")
-print(gpt4all_response)
+# Get user input for topic
+topic = input("Enter a topic to learn about: ")
+
+# Run selected model
+if model_choice == "1":
+    response = llama_chain.run(topic)
+    print("\nLlama response:")
+    print(response)
+elif model_choice == "2":
+    response = gpt4all_chain.run(topic)
+    print("\nGPT4All response:")
+    print(response)
+else:
+    print("Invalid selection. Please choose 1 or 2.")
