@@ -42,7 +42,17 @@ except Exception as e:
 # Create prompt templates
 prompt = PromptTemplate(
     input_variables=["topic"],
-    template="Tell me about {topic}."
+    template="""You are a knowledgeable and helpful AI assistant. Please provide detailed, accurate, and well-structured information about {topic}.
+
+Your response should:
+- Start with a clear introduction
+- Include key concepts and definitions
+- Provide relevant examples where appropriate
+- Be factual and informative
+- End with a brief summary
+
+Topic: {topic}
+Response:"""
 )
 
 # Create the chains if models loaded successfully
