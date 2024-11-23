@@ -8,6 +8,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 import os.path
 import json
 from datetime import datetime
+import streamlit as st
 
 # Initialize the LLMs and vector store components
 llama = None
@@ -21,7 +22,7 @@ vector_store = None
 try:
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 except Exception as e:
-    print(f"Error loading embeddings model: {str(e)}")
+    st.error(f"Error loading embeddings model: {str(e)}")
 
 # Initialize vector store
 if not os.path.exists("vectorstore"):
@@ -33,7 +34,7 @@ try:
         embedding_function=embeddings
     )
 except Exception as e:
-    print(f"Error initializing vector store: {str(e)}")
+    st.error(f"Error initializing vector store: {str(e)}")
 
 try:
     if not os.path.exists("models/llama3_1"):
@@ -47,7 +48,7 @@ try:
         verbose=True
     )
 except Exception as e:
-    print(f"Error loading Llama model: {str(e)}")
+    st.error(f"Error loading Llama model: {str(e)}")
 
 try:
     if not os.path.exists("models/gpt4all-j-v1.3-groovy"):
@@ -60,7 +61,7 @@ try:
         verbose=True
     )
 except Exception as e:
-    print(f"Error loading GPT4All model: {str(e)}")
+    st.error(f"Error loading GPT4All model: {str(e)}")
 
 # Create prompt templates
 rag_prompt = PromptTemplate(
@@ -91,54 +92,45 @@ if gpt4all is not None:
 if not os.path.exists("responses"):
     os.makedirs("responses")
 
-while True:
-    # Get user input for model selection
-    print("\nSelect a model:")
-    print("1. Llama")
-    print("2. GPT4All")
-    print("3. Exit")
-    model_choice = input("Enter 1, 2, or 3: ")
+# Streamlit UI
+st.title("AI Assistant")
 
-    if model_choice == "3":
-        print("Goodbye!")
-        break
+# Model selection
+model_choice = st.selectbox(
+    "Select a model",
+    ("Llama", "GPT4All")
+)
 
-    # Get temperature input
-    while True:
-        try:
-            temperature = float(input("Enter temperature (0.0 to 1.0): "))
-            if 0.0 <= temperature <= 1.0:
-                break
-            else:
-                print("Temperature must be between 0.0 and 1.0")
-        except ValueError:
-            print("Please enter a valid number")
+# Temperature slider
+temperature = st.slider("Temperature", 0.0, 1.0, 0.7)
 
-    # Get user input for topic
-    topic = input("Enter a topic to learn about: ")
+# Topic input
+topic = st.text_input("Enter a topic to learn about")
 
+# Generate button
+if st.button("Generate Response"):
     # Retrieve relevant documents from vector store
     if vector_store is not None:
         try:
             docs = vector_store.similarity_search(topic, k=3)
             context = "\n\n".join([doc.page_content for doc in docs])
         except Exception as e:
-            print(f"Error retrieving documents: {str(e)}")
+            st.error(f"Error retrieving documents: {str(e)}")
             context = ""
     else:
         context = ""
 
     # Run selected model
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    model_name = "llama" if model_choice == "1" else "gpt4all"
+    model_name = "llama" if model_choice == "Llama" else "gpt4all"
     
-    if model_choice == "1":
+    if model_choice == "Llama":
         if llama_chain is not None:
             try:
-                llama.temperature = temperature  # Update temperature
+                llama.temperature = temperature
                 response = llama_chain.run(context=context, topic=topic)
-                print("\nLlama response:")
-                print(response)
+                st.write("### Response:")
+                st.write(response)
                 
                 # Save response
                 response_data = {
@@ -151,19 +143,19 @@ while True:
                 }
                 with open(f"responses/{model_name}_{timestamp}.json", "w") as f:
                     json.dump(response_data, f, indent=4)
-                print(f"\nResponse saved to responses/{model_name}_{timestamp}.json")
+                st.success(f"Response saved to responses/{model_name}_{timestamp}.json")
                 
             except Exception as e:
-                print(f"Error running Llama model: {str(e)}")
+                st.error(f"Error running Llama model: {str(e)}")
         else:
-            print("Llama model is not available")
-    elif model_choice == "2":
+            st.error("Llama model is not available")
+    else:  # GPT4All
         if gpt4all_chain is not None:
             try:
-                gpt4all.temperature = temperature  # Update temperature
+                gpt4all.temperature = temperature
                 response = gpt4all_chain.run(context=context, topic=topic)
-                print("\nGPT4All response:")
-                print(response)
+                st.write("### Response:")
+                st.write(response)
                 
                 # Save response
                 response_data = {
@@ -176,11 +168,9 @@ while True:
                 }
                 with open(f"responses/{model_name}_{timestamp}.json", "w") as f:
                     json.dump(response_data, f, indent=4)
-                print(f"\nResponse saved to responses/{model_name}_{timestamp}.json")
+                st.success(f"Response saved to responses/{model_name}_{timestamp}.json")
                 
             except Exception as e:
-                print(f"Error running GPT4All model: {str(e)}")
+                st.error(f"Error running GPT4All model: {str(e)}")
         else:
-            print("GPT4All model is not available")
-    else:
-        print("Invalid selection. Please choose 1, 2, or 3.")
+            st.error("GPT4All model is not available")
