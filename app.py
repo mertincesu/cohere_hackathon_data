@@ -3,6 +3,8 @@ from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain.llms import GPT4All
 import os.path
+import json
+from datetime import datetime
 
 # Initialize the LLMs
 llama = None
@@ -49,6 +51,10 @@ if llama is not None:
 if gpt4all is not None:
     gpt4all_chain = LLMChain(llm=gpt4all, prompt=prompt)
 
+# Create responses directory if it doesn't exist
+if not os.path.exists("responses"):
+    os.makedirs("responses")
+
 while True:
     # Get user input for model selection
     print("\nSelect a model:")
@@ -76,6 +82,9 @@ while True:
     topic = input("Enter a topic to learn about: ")
 
     # Run selected model
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    model_name = "llama" if model_choice == "1" else "gpt4all"
+    
     if model_choice == "1":
         if llama_chain is not None:
             try:
@@ -83,6 +92,19 @@ while True:
                 response = llama_chain.run(topic)
                 print("\nLlama response:")
                 print(response)
+                
+                # Save response
+                response_data = {
+                    "model": "Llama",
+                    "topic": topic,
+                    "temperature": temperature,
+                    "response": response,
+                    "timestamp": timestamp
+                }
+                with open(f"responses/{model_name}_{timestamp}.json", "w") as f:
+                    json.dump(response_data, f, indent=4)
+                print(f"\nResponse saved to responses/{model_name}_{timestamp}.json")
+                
             except Exception as e:
                 print(f"Error running Llama model: {str(e)}")
         else:
@@ -94,6 +116,19 @@ while True:
                 response = gpt4all_chain.run(topic)
                 print("\nGPT4All response:")
                 print(response)
+                
+                # Save response
+                response_data = {
+                    "model": "GPT4All",
+                    "topic": topic,
+                    "temperature": temperature,
+                    "response": response,
+                    "timestamp": timestamp
+                }
+                with open(f"responses/{model_name}_{timestamp}.json", "w") as f:
+                    json.dump(response_data, f, indent=4)
+                print(f"\nResponse saved to responses/{model_name}_{timestamp}.json")
+                
             except Exception as e:
                 print(f"Error running GPT4All model: {str(e)}")
         else:
