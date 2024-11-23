@@ -5,6 +5,7 @@ from langchain.llms import GPT4All
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import Chroma
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.document_loaders import PyPDFLoader
 import os.path
 import json
 from datetime import datetime
@@ -24,15 +25,55 @@ try:
 except Exception as e:
     st.error(f"Error loading embeddings model: {str(e)}")
 
+# Initialize text splitter
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=1000,
+    chunk_overlap=200,
+    length_function=len
+)
+
+# Load and process PDF documents
+pdf_dir = "documents"
+if not os.path.exists(pdf_dir):
+    os.makedirs(pdf_dir)
+
+documents = []
+for file in os.listdir(pdf_dir):
+    if file.endswith('.pdf'):
+        pdf_path = os.path.join(pdf_dir, file)
+        try:
+            loader = PyPDFLoader(pdf_path)
+            pages = loader.load()
+            documents.extend(pages)
+        except Exception as e:
+            st.error(f"Error loading PDF {file}: {str(e)}")
+
+# Split documents into chunks
+if documents:
+    try:
+        texts = text_splitter.split_documents(documents)
+    except Exception as e:
+        st.error(f"Error splitting documents: {str(e)}")
+        texts = []
+else:
+    texts = []
+
 # Initialize vector store
 if not os.path.exists("vectorstore"):
     os.makedirs("vectorstore")
 
 try:
-    vector_store = Chroma(
-        persist_directory="vectorstore",
-        embedding_function=embeddings
-    )
+    if texts:
+        vector_store = Chroma.from_documents(
+            documents=texts,
+            embedding=embeddings,
+            persist_directory="vectorstore"
+        )
+    else:
+        vector_store = Chroma(
+            persist_directory="vectorstore",
+            embedding_function=embeddings
+        )
 except Exception as e:
     st.error(f"Error initializing vector store: {str(e)}")
 
@@ -94,6 +135,30 @@ if not os.path.exists("responses"):
 
 # Streamlit UI
 st.title("AI Assistant")
+
+# Upload PDF file
+uploaded_file = st.file_uploader("Upload a PDF document", type="pdf")
+if uploaded_file is not None:
+    try:
+        # Save uploaded file
+        pdf_path = os.path.join(pdf_dir, uploaded_file.name)
+        with open(pdf_path, "wb") as f:
+            f.write(uploaded_file.getvalue())
+        
+        # Process new PDF
+        loader = PyPDFLoader(pdf_path)
+        pages = loader.load()
+        texts = text_splitter.split_documents(pages)
+        
+        # Update vector store
+        vector_store = Chroma.from_documents(
+            documents=texts,
+            embedding=embeddings,
+            persist_directory="vectorstore"
+        )
+        st.success(f"Successfully processed {uploaded_file.name}")
+    except Exception as e:
+        st.error(f"Error processing uploaded file: {str(e)}")
 
 # Model selection
 model_choice = st.selectbox(
