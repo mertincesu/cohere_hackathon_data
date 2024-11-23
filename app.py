@@ -63,13 +63,16 @@ except Exception as e:
     print(f"Error loading GPT4All model: {str(e)}")
 
 # Create prompt templates
-prompt = PromptTemplate(
-    input_variables=["topic"],
-    template="""You are a knowledgeable and helpful AI assistant. Please provide detailed, accurate, and well-structured information about {topic}.
+rag_prompt = PromptTemplate(
+    input_variables=["context", "topic"],
+    template="""You are a knowledgeable and helpful AI assistant. Using the provided context and your knowledge, please provide detailed, accurate, and well-structured information about {topic}.
+
+Context information:
+{context}
 
 Your response should:
 - Start with a clear introduction
-- Include key concepts and definitions
+- Include key concepts and definitions from the context
 - Provide relevant examples where appropriate
 - Be factual and informative
 - End with a brief summary
@@ -78,13 +81,11 @@ Topic: {topic}
 Response:"""
 )
 
-# TODO: Add RAG-specific prompt template that includes context from retrieved documents
-
 # Create the chains if models loaded successfully
 if llama is not None:
-    llama_chain = LLMChain(llm=llama, prompt=prompt)
+    llama_chain = LLMChain(llm=llama, prompt=rag_prompt)
 if gpt4all is not None:
-    gpt4all_chain = LLMChain(llm=gpt4all, prompt=prompt)
+    gpt4all_chain = LLMChain(llm=gpt4all, prompt=rag_prompt)
 
 # Create responses directory if it doesn't exist
 if not os.path.exists("responses"):
@@ -116,8 +117,16 @@ while True:
     # Get user input for topic
     topic = input("Enter a topic to learn about: ")
 
-    # TODO: Add document retrieval from vector store based on topic
-    # TODO: Add context from retrieved documents to prompt
+    # Retrieve relevant documents from vector store
+    if vector_store is not None:
+        try:
+            docs = vector_store.similarity_search(topic, k=3)
+            context = "\n\n".join([doc.page_content for doc in docs])
+        except Exception as e:
+            print(f"Error retrieving documents: {str(e)}")
+            context = ""
+    else:
+        context = ""
 
     # Run selected model
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -127,7 +136,7 @@ while True:
         if llama_chain is not None:
             try:
                 llama.temperature = temperature  # Update temperature
-                response = llama_chain.run(topic)
+                response = llama_chain.run(context=context, topic=topic)
                 print("\nLlama response:")
                 print(response)
                 
@@ -136,6 +145,7 @@ while True:
                     "model": "Llama",
                     "topic": topic,
                     "temperature": temperature,
+                    "context": context,
                     "response": response,
                     "timestamp": timestamp
                 }
@@ -151,7 +161,7 @@ while True:
         if gpt4all_chain is not None:
             try:
                 gpt4all.temperature = temperature  # Update temperature
-                response = gpt4all_chain.run(topic)
+                response = gpt4all_chain.run(context=context, topic=topic)
                 print("\nGPT4All response:")
                 print(response)
                 
@@ -160,6 +170,7 @@ while True:
                     "model": "GPT4All",
                     "topic": topic,
                     "temperature": temperature,
+                    "context": context,
                     "response": response,
                     "timestamp": timestamp
                 }
