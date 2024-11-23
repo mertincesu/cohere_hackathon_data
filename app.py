@@ -2,22 +2,40 @@ from langchain.llms import LlamaCpp
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain.llms import GPT4All
+import os.path
 
 # Initialize the LLMs
-llama = LlamaCpp(
-    model_path="models/llama3_1", 
-    temperature=0.7,
-    max_tokens=2000,
-    n_ctx=2048,
-    verbose=True
-)
+llama = None
+gpt4all = None
+llama_chain = None
+gpt4all_chain = None
 
-gpt4all = GPT4All(
-    model="models/gpt4all-j-v1.3-groovy",
-    temperature=0.7,
-    max_tokens=2000,
-    verbose=True
-)
+try:
+    if not os.path.exists("models/llama3_1"):
+        raise FileNotFoundError("Llama model file not found")
+        
+    llama = LlamaCpp(
+        model_path="models/llama3_1", 
+        temperature=0.7,
+        max_tokens=2000,
+        n_ctx=2048,
+        verbose=True
+    )
+except Exception as e:
+    print(f"Error loading Llama model: {str(e)}")
+
+try:
+    if not os.path.exists("models/gpt4all-j-v1.3-groovy"):
+        raise FileNotFoundError("GPT4All model file not found")
+        
+    gpt4all = GPT4All(
+        model="models/gpt4all-j-v1.3-groovy",
+        temperature=0.7,
+        max_tokens=2000,
+        verbose=True
+    )
+except Exception as e:
+    print(f"Error loading GPT4All model: {str(e)}")
 
 # Create prompt templates
 prompt = PromptTemplate(
@@ -25,9 +43,11 @@ prompt = PromptTemplate(
     template="Tell me about {topic}."
 )
 
-# Create the chains
-llama_chain = LLMChain(llm=llama, prompt=prompt)
-gpt4all_chain = LLMChain(llm=gpt4all, prompt=prompt)
+# Create the chains if models loaded successfully
+if llama is not None:
+    llama_chain = LLMChain(llm=llama, prompt=prompt)
+if gpt4all is not None:
+    gpt4all_chain = LLMChain(llm=gpt4all, prompt=prompt)
 
 # Get user input for model selection
 print("Select a model:")
@@ -40,12 +60,24 @@ topic = input("Enter a topic to learn about: ")
 
 # Run selected model
 if model_choice == "1":
-    response = llama_chain.run(topic)
-    print("\nLlama response:")
-    print(response)
+    if llama_chain is not None:
+        try:
+            response = llama_chain.run(topic)
+            print("\nLlama response:")
+            print(response)
+        except Exception as e:
+            print(f"Error running Llama model: {str(e)}")
+    else:
+        print("Llama model is not available")
 elif model_choice == "2":
-    response = gpt4all_chain.run(topic)
-    print("\nGPT4All response:")
-    print(response)
+    if gpt4all_chain is not None:
+        try:
+            response = gpt4all_chain.run(topic)
+            print("\nGPT4All response:")
+            print(response)
+        except Exception as e:
+            print(f"Error running GPT4All model: {str(e)}")
+    else:
+        print("GPT4All model is not available")
 else:
     print("Invalid selection. Please choose 1 or 2.")
